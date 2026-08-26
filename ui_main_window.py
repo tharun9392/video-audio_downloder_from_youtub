@@ -2,7 +2,8 @@ import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QRadioButton, QButtonGroup, QComboBox,
-    QProgressBar, QFrame, QSizePolicy, QApplication, QBoxLayout
+    QProgressBar, QFrame, QSizePolicy, QApplication, QBoxLayout,
+    QScrollArea
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
@@ -21,10 +22,37 @@ class MainWindow(QWidget):
         self.resize(900, 560)
         self.setMinimumSize(360, 560)
         
-        # Root Layout: QBoxLayout allows stacking on narrow (mobile) screens
-        self.root_layout = QBoxLayout(QBoxLayout.LeftToRight, self)
+        # Outer wrapping layout for centering against the new background
+        self.outer_layout = QVBoxLayout(self)
+        # We will control resizing via dynamic margins in resizeEvent
+        self.outer_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Central container to lock maximum width/height when fullscreen
+        self.central_container = QWidget()
+        self.central_container.setObjectName("centralContainer")
+        
+        # Scrolling area for mobile responsive overflowing
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setObjectName("mainScrollArea")
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setStyleSheet("background: transparent;")
+        
+        self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("scrollContent")
+        self.scroll_content.setStyleSheet("background: transparent;")
+        
+        # Root Layout inside the scroll content
+        self.root_layout = QBoxLayout(QBoxLayout.LeftToRight, self.scroll_content)
         self.root_layout.setContentsMargins(16, 16, 16, 16)
         self.root_layout.setSpacing(16)
+        
+        self.scroll_area.setWidget(self.scroll_content)
+        
+        # Bind scroll area inside central container
+        self.central_layout = QVBoxLayout(self.central_container)
+        self.central_layout.setContentsMargins(0, 0, 0, 0)
+        self.central_layout.addWidget(self.scroll_area)
 
         # ==========================================
         # LEFT SIDEBAR
@@ -41,15 +69,16 @@ class MainWindow(QWidget):
         brand_row = QHBoxLayout()
         brand_row.setSpacing(12)
         
-        self.logo_label = QLabel(" ▶ ")
+        self.logo_label = QLabel("🦋")
         self.logo_label.setObjectName("logoLabel")
         self.logo_label.setFixedSize(42, 42)
         self.logo_label.setAlignment(Qt.AlignCenter)
+        self.logo_label.setAttribute(Qt.WA_StyledBackground, True)
         
         brand_text_layout = QVBoxLayout()
         brand_text_layout.setSpacing(1)
         
-        title_label = QLabel("123")
+        title_label = QLabel("Butterfly")
         title_label.setObjectName("sidebarTitle")
         
         subtitle_label = QLabel("YouTube media downloader")
@@ -62,13 +91,11 @@ class MainWindow(QWidget):
         brand_row.addLayout(brand_text_layout)
         sidebar_layout.addLayout(brand_row)
 
-        # Divider
-        sidebar_layout.addWidget(self.create_sidebar_divider())
-
         # Save Folder Section (Grouped)
         folder_card = QFrame()
+        folder_card.setObjectName("sidebarCard")
         folder_card_layout = QVBoxLayout(folder_card)
-        folder_card_layout.setContentsMargins(0, 0, 0, 0)
+        folder_card_layout.setContentsMargins(12, 12, 12, 12)
         folder_card_layout.setSpacing(8)
         
         lbl_save_folder = QLabel("Save folder")
@@ -87,16 +114,14 @@ class MainWindow(QWidget):
         
         sidebar_layout.addWidget(folder_card)
 
-        # Divider
-        sidebar_layout.addWidget(self.create_sidebar_divider())
-
         # Download Format Section (Grouped)
         format_card = QFrame()
+        format_card.setObjectName("sidebarCard")
         format_card_layout = QVBoxLayout(format_card)
-        format_card_layout.setContentsMargins(0, 0, 0, 0)
+        format_card_layout.setContentsMargins(12, 12, 12, 12)
         format_card_layout.setSpacing(8)
         
-        lbl_download_format = QLabel("Download format")
+        lbl_download_format = QLabel("Download Format & Quality")
         lbl_download_format.setObjectName("sectionLabel2")
         format_card_layout.addWidget(lbl_download_format)
         
@@ -115,27 +140,17 @@ class MainWindow(QWidget):
         
         format_card_layout.addWidget(self.radio_video)
         format_card_layout.addWidget(self.radio_audio)
-        sidebar_layout.addWidget(format_card)
-
-        # Divider
-        sidebar_layout.addWidget(self.create_sidebar_divider())
-
-        # Video Resolution Section (Grouped)
-        resolution_card = QFrame()
-        resolution_card_layout = QVBoxLayout(resolution_card)
-        resolution_card_layout.setContentsMargins(0, 0, 0, 0)
-        resolution_card_layout.setSpacing(8)
         
         lbl_resolution = QLabel("Video resolution")
         lbl_resolution.setObjectName("sectionLabel3")
-        resolution_card_layout.addWidget(lbl_resolution)
+        format_card_layout.addWidget(lbl_resolution)
         
         self.quality_combo = QComboBox()
-        self.quality_combo.addItems(["Best available", "2160p (4K)", "1440p (2K)", "1080p", "720p", "480p"])
+        self.quality_combo.addItems(["Best Available", "2160p (4K)", "1440p (2K)", "1080p", "720p", "480p"])
         self.quality_combo.setCursor(Qt.PointingHandCursor)
-        resolution_card_layout.addWidget(self.quality_combo)
+        format_card_layout.addWidget(self.quality_combo)
         
-        sidebar_layout.addWidget(resolution_card)
+        sidebar_layout.addWidget(format_card)
 
         # Push items to the top
         sidebar_layout.addStretch()
@@ -158,7 +173,7 @@ class MainWindow(QWidget):
         url_card_layout.setContentsMargins(16, 16, 16, 16)
         url_card_layout.setSpacing(8)
         
-        url_lbl = QLabel("YouTube URL")
+        url_lbl = QLabel("URL & Preview")
         url_lbl.setObjectName("urlLabel")
         url_card_layout.addWidget(url_lbl)
         
@@ -237,7 +252,7 @@ class MainWindow(QWidget):
         # Header Row (Status text [left], percentage [right])
         status_header_layout = QHBoxLayout()
         
-        lbl_status_hdr = QLabel("Status")
+        lbl_status_hdr = QLabel("Connection Status")
         lbl_status_hdr.setObjectName("statusHeader")
         
         self.status_percent_label = QLabel("0%")
@@ -256,17 +271,14 @@ class MainWindow(QWidget):
         # Micro thin Progress Bar (setFixedHeight is 4px)
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
-        self.progress_bar.setFixedHeight(5)
+        self.progress_bar.setFixedHeight(6)
         self.progress_bar.setTextVisible(False)
         status_card_layout.addWidget(self.progress_bar)
         
-        self.main_panel_layout.addWidget(self.status_card)
-
-        # 4. Action Button Placement
-        action_layout = QHBoxLayout()
-        action_layout.setSpacing(12)
+        status_card_layout.addSpacing(6)
         
-        self.download_btn = QPushButton("📥   Download")
+        # 4. Action Button Placement
+        self.download_btn = QPushButton("☁   Download")
         self.download_btn.setObjectName("downloadBtn")
         self.download_btn.setCursor(Qt.PointingHandCursor)
         
@@ -275,14 +287,14 @@ class MainWindow(QWidget):
         self.open_folder_btn.setCursor(Qt.PointingHandCursor)
         self.open_folder_btn.setVisible(False)
         
-        action_layout.addWidget(self.download_btn, 3)
-        action_layout.addWidget(self.open_folder_btn, 1)
-        self.main_panel_layout.addWidget(self.open_folder_btn) # Keeps them stacked cleanly on mobile
-        self.main_panel_layout.addWidget(self.download_btn)
+        status_card_layout.addWidget(self.open_folder_btn)
+        status_card_layout.addWidget(self.download_btn)
+        
+        self.main_panel_layout.addWidget(self.status_card)
 
         # Set main workspace
         self.root_layout.addWidget(self.main_panel, 1)
-        self.setLayout(self.root_layout)
+        self.outer_layout.addWidget(self.central_container)
 
         # Connections
         self.radio_video.toggled.connect(self.toggle_quality_combobox)
@@ -313,12 +325,30 @@ class MainWindow(QWidget):
         return line
 
     def resizeEvent(self, event):
-        """Responsive layout: stacks vertically on narrow (mobile) widths."""
+        """Responsive layout: automatically calculating dynamic margins for flawless centering."""
         super().resizeEvent(event)
-        width = self.width()
-        if width < 700:
+        
+        w = self.width()
+        h = self.height()
+        
+        # Calculate dynamic margins to max out width at 940px
+        max_w = 940
+        margin_x = max((w - max_w) // 2, 0)
+        content_w = w - (margin_x * 2)
+        
+        if content_w < 700:
+            # Stacked vertical mode (Mobile) - Free heights
             self.root_layout.setDirection(QBoxLayout.TopToBottom)
-            self.sidebar_frame.setFixedWidth(self.width() - 32)
+            self.sidebar_frame.setMinimumWidth(0)
+            self.sidebar_frame.setMaximumWidth(16777215) # Removes fixed width
+            margin_y = 0 # Give maximum vertical space for the stacked widgets
         else:
+            # Side-by-side mode (Desktop) - Boxed heights
             self.root_layout.setDirection(QBoxLayout.LeftToRight)
             self.sidebar_frame.setFixedWidth(290)
+            
+            max_h = 600
+            margin_y = max((h - max_h) // 2, 0)
+            
+        # Apply the margins to naturally center everything without forcing minimum clipping limits
+        self.outer_layout.setContentsMargins(margin_x, margin_y, margin_x, margin_y)

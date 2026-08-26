@@ -1,6 +1,7 @@
 import os
 import sys
 import urllib.request
+import re
 from PyQt5.QtCore import QThread, pyqtSignal
 import yt_dlp
 
@@ -48,7 +49,9 @@ class InfoFetchWorker(QThread):
                 }
                 self.fetched.emit(True, data)
         except Exception as e:
-            self.fetched.emit(False, {'error': str(e).split('\n')[0]})
+            error_msg = str(e).split('\n')[0]
+            error_msg = re.sub(r'\x1b\[[0-9;]*m', '', error_msg) # Strip ANSI
+            self.fetched.emit(False, {'error': error_msg})
 
     def format_duration(self, seconds):
         if not seconds:
@@ -134,6 +137,7 @@ class DownloadWorker(QThread):
                 error_msg = "FFmpeg not found! Please install FFmpeg (required for merging audio/video or MP3 extraction)."
             else:
                 error_msg = error_msg.split('\n')[0]
+                error_msg = re.sub(r'\x1b\[[0-9;]*m', '', error_msg) # Strip ANSI
                 if error_msg.startswith("ERROR: "):
                     error_msg = error_msg[7:]
             self.finished.emit(False, error_msg)

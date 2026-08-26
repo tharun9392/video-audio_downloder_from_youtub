@@ -199,9 +199,9 @@ class YTGrabberApp(MainWindow):
             
         self.download_btn.setEnabled(not loading)
         if loading:
-            self.download_btn.setText("⏳ Downloading...")
+            self.download_btn.setText("☁ Downloading... (Connecting)")
         else:
-            self.download_btn.setText("📥  Download")
+            self.download_btn.setText("☁   Download")
 
     def open_folder(self):
         """Trigger explorer to open user's download directory."""
@@ -227,6 +227,7 @@ if __name__ == "__main__":
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
         
     app = QApplication(sys.argv)
+    app.setStyle("Fusion") # Absolutely critical on Windows to enable CSS backgrounds on buttons
     window = YTGrabberApp()
     window.show()
     sys.exit(app.exec_())
